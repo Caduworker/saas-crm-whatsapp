@@ -126,6 +126,7 @@ Para volver a prenderlo otro día: abrí la terminal en la carpeta y `npm run de
 | Ves esto | Qué hacer |
 |---|---|
 | `node` o `git` "no se reconoce" | Cerrá y abrí la terminal de nuevo. Si sigue, reinstalá el programa. |
+| Supabase dice **"Failed to fetch (api.supabase.com)"** al apretar Run | Es la conexión, no el código. Recargá la página (F5). Si en **Table Editor** ya ves las tablas, se instaló bien; si no hay ninguna, apretá Run otra vez. |
 | `npm run configurar` dice **"La base está vacía"** | Te faltó el Paso 2 (pegar `instalar.sql` y apretar Run). |
 | `npm run configurar` dice **"No me pude conectar"** | Revisá la Project URL y que pegaste la clave **secreta**, no la pública. |
 | La página dice "Faltan las variables..." | Corré `npm run configurar` otra vez. |
