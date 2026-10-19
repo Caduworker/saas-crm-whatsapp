@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+/* Rediseño "sala de control" (oct. 2026): lienzo navy profundo en oscuro y
+   azul-gris claro en claro, un solo resplandor turquesa y cifras grandes en
+   Bricolage. El tema sigue al sistema y se cambia a mano desde el menú
+   (lib/temaClaroOscuro.ts pone data-theme en <html>).
+   --marca-acento / --marca-primario son los colores de marca por empresa que
+   setea AuthContext. */
+:root {
+  color-scheme: dark;
+  --bg: #050d1c; --bg2: #081631; --surface: #0b1c38; --surface-2: #10264a; --surface-3: #16315c;
+  --line: #1a3258; --line-2: #26446f;
+  --fg: #eaf1fb; --fg-2: #9db0cc; --fg-3: #6a80a6;
+  --accent: var(--marca-acento, #3cc0da); --accent-2: #5b86c4; --accent-fg: #031326;
+  --accent-soft: color-mix(in srgb, var(--accent) 17%, transparent);
+  --glow: color-mix(in srgb, var(--accent) 20%, transparent);
+  --ok: #34d3a0; --ok-soft: #0d3b32; --warn: #f5a54a; --warn-soft: #3f2c10; --bad: #ff6b6b; --bad-soft: #431a22;
+  --bubble-out: #0f3a5f; --bubble-in: #10264a; --chat: #081631; --shadow: 0 10px 40px #0008;
+  --fuente-display: "Bricolage Grotesque", "Source Sans 3", system-ui, sans-serif;
+  --fuente-sans: "Source Sans 3", system-ui, sans-serif;
+  --fuente-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --r: 16px; --r-s: 10px;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg: #eaf0f8; --bg2: #e2eaf5; --surface: #ffffff; --surface-2: #eef3fa; --surface-3: #dfe8f5;
+    --line: #dbe4f0; --line-2: #c4d2e6;
+    --fg: #071a38; --fg-2: #4a5d7e; --fg-3: #7a8aa6;
+    --accent: var(--marca-acento, #16809a); --accent-2: #44679B; --accent-fg: #ffffff;
+    --accent-soft: color-mix(in srgb, var(--accent) 14%, white);
+    --glow: color-mix(in srgb, var(--accent) 14%, transparent);
+    --ok: #0b8c68; --ok-soft: #d9f3ea; --warn: #b45309; --warn-soft: #fdecd6; --bad: #c62828; --bad-soft: #fbe3e3;
+    --bubble-out: #d4e6f3; --bubble-in: #ffffff; --chat: #e3ebf6; --shadow: 0 10px 30px #1b3a6a1f;
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #eaf0f8; --bg2: #e2eaf5; --surface: #ffffff; --surface-2: #eef3fa; --surface-3: #dfe8f5;
+  --line: #dbe4f0; --line-2: #c4d2e6;
+  --fg: #071a38; --fg-2: #4a5d7e; --fg-3: #7a8aa6;
+  --accent: var(--marca-acento, #16809a); --accent-2: #44679B; --accent-fg: #ffffff;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, white);
+  --glow: color-mix(in srgb, var(--accent) 14%, transparent);
+  --ok: #0b8c68; --ok-soft: #d9f3ea; --warn: #b45309; --warn-soft: #fdecd6; --bad: #c62828; --bad-soft: #fbe3e3;
+  --bubble-out: #d4e6f3; --bubble-in: #ffffff; --chat: #e3ebf6; --shadow: 0 10px 30px #1b3a6a1f;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  font-family: var(--fuente-sans);
+  font-size: 14.5px;
+  line-height: 1.4;
+  background-color: var(--bg);
+  color: var(--fg);
+  background-image:
+    radial-gradient(900px 500px at 85% -10%, var(--glow), transparent 60%),
+    radial-gradient(700px 400px at -5% 110%, var(--glow), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Utilidades del sistema de diseño */
+.disp { font-family: var(--fuente-display); letter-spacing: -.02em; }
+.num { font-family: var(--fuente-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-3); font-weight: 600; }
+.card-ui {
+  background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 80%, var(--bg)));
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  min-width: 0;
+}
+
+/* Scrollbar fina por defecto. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: var(--line-2); border-radius: 8px; }
+
+/* Compatibilidad: antes era para el sidebar navy; ahora el sidebar usa la
+   misma scrollbar que el resto. */
+.scroll-navy { scrollbar-color: var(--line-2) transparent; }
+
+/* Foco visible y consistente en todo control. */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.6; }
+
+/* Los controles nativos toman el tema (sin esto, select/input quedan blancos en oscuro). */
+input, select, textarea { color: inherit; font-family: inherit; }
+select option { background: var(--surface); color: var(--fg); }
+::placeholder { color: var(--fg-3); opacity: 1; }
+
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.aparecer { animation: aparecer 280ms cubic-bezier(.2, .7, .2, 1); }
+
+@keyframes pulso {
+  70% { box-shadow: 0 0 0 9px #0000; }
+  100% { box-shadow: 0 0 0 0 #0000; }
+}
+.pulso { animation: pulso 2.2s infinite; box-shadow: 0 0 0 0 var(--ok); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, .aparecer, .pulso { animation: none !important; transition: none !important; }
+}

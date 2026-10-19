@@ -1,0 +1,68 @@
+import { iniciarProgramadorDeMensajes } from './whatsapp/programados.js';
+import fs from 'node:fs';
+import express from 'express';
+import cors from 'cors';
+import { env } from './config/env.js';
+import { supabase } from './supabase/client.js';
+import { botRouter } from './routes/bot.js';
+import { empresasRouter } from './routes/empresas.js';
+import { enviarRouter } from './routes/enviar.js';
+import { etiquetasRouter } from './routes/etiquetas.js';
+import { lineasRouter } from './routes/lineas.js';
+import { usuariosRouter } from './routes/usuarios.js';
+import { iniciarConexion } from './whatsapp/conexion.js';
+import { carpetaAuth } from './whatsapp/sesiones.js';
+
+// Con varias líneas corriendo en el mismo proceso, un error sin atrapar de
+// UNA sesión de WhatsApp no puede tirar abajo el servidor entero — eso
+// desconectaría a todas las demás líneas de una. Este es el freno
+// de última instancia; el arreglo real para cada caso puntual (ver
+// whatsapp/conexion.ts) es no dejar promesas sin `.catch()`.
+process.on('unhandledRejection', (motivo) => {
+  console.error('Unhandled rejection (el proceso sigue corriendo):', motivo);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception (el proceso sigue corriendo):', err);
+});
+
+const app = express();
+app.use(cors({ origin: env.corsOrigin }));
+app.use(express.json());
+app.use(enviarRouter);
+app.use(etiquetasRouter);
+app.use(lineasRouter);
+app.use(usuariosRouter);
+app.use(empresasRouter);
+app.use(botRouter);
+
+app.listen(env.port, () => {
+  console.log(`API de envío escuchando en http://localhost:${env.port}`);
+});
+
+iniciarProgramadorDeMensajes();
+
+// Reconecta automáticamente todas las líneas que ya tenían una sesión guardada
+// en disco (no hace falta volver a escanear cada vez que reiniciás el backend).
+//
+// Antes se disparaban todas a la vez (fire-and-forget en el mismo tick): con
+// varias líneas de WhatsApp Business, cada una arranca su propia sincronización
+// inicial de etiquetas (cientos de eventos hacia Supabase) apenas conecta, y
+// hacerlo todo junto saturaba la conexión a Supabase -- vimos ~14.000 "fetch
+// failed" seguidos en producción el 2026-09-14, que además tiraron abajo la
+// conexión de WhatsApp de una de las líneas (agotó sus reintentos y quedó
+// desconectada, pidiendo escanear el QR de nuevo). Escalonamos el arranque de
+// cada línea para que esa ráfaga no se sume entre varias al mismo tiempo.
+const ESPERA_ENTRE_RECONEXIONES_MS = 20000;
+
+(async () => {
+  const { data: lineas, error } = await supabase.from('lineas_whatsapp').select('id');
+  if (error) {
+    console.error('No se pudieron leer las líneas de Supabase:', error.message);
+    return;
+  }
+  for (const linea of lineas ?? []) {
+    if (!fs.existsSync(carpetaAuth(linea.id))) continue;
+    iniciarConexion(linea.id).catch((err) => console.error(`Error reconectando línea ${linea.id}:`, err.message));
+    await new Promise((resolver) => setTimeout(resolver, ESPERA_ENTRE_RECONEXIONES_MS));
+  }
+})();
