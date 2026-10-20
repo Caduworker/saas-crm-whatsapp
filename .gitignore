@@ -4,3 +4,4 @@ dist/
 **/auth_info_*/
 .DS_Store
 *.tsbuildinfo
+.claude/
