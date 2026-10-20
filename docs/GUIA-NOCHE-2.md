@@ -87,12 +87,13 @@ La primera vez se abre una ventana para iniciar sesión en GitHub: elegí
 
 ## Paso 5: Conectar tu repo con el servidor
 
-### 5.1 Activar las Actions (una sola vez)
+### 5.1 Revisar las Actions
 
-GitHub trae apagadas las "Actions" en las copias (fork). Sin esto no se publica nada.
+En tu repo, pestaña **Actions**. Si aparece el botón **I understand my workflows,
+go ahead and enable them**, apretalo (sin eso no se publica nada). Si no aparece, ya están activas.
 
-1. En tu repo, pestaña **Actions**.
-2. Apretá **I understand my workflows, go ahead and enable them**.
+> Es normal ver una ❌ roja de cuando hiciste el **Sync fork**: GitHub intentó
+> publicar antes de que cargaras los secretos.
 
 ### 5.2 Cargar tus 6 secretos (una sola vez)
 
