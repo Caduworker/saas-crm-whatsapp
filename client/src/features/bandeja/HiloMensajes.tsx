@@ -1,10 +1,10 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Check, MoreVertical, PanelRight, User } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, Check, MoreVertical, PanelRight, User } from 'lucide-react';
 import { ESTADO_CONVERSACION_STYLE, colorEtiquetaWhatsapp } from '../../lib/tema';
-import { inicialesDe, nombreConversacion, tieneNombre } from './utils';
+import { formatoTelefono, inicialesDe, nombreConversacion, tieneNombre } from './utils';
 import { useContacto } from './hooks/useContacto';
-import { supabase } from '../../lib/supabaseClient';
 import BurbujaMensaje from './BurbujaMensaje';
+import { useCambioEtapa } from '../pipeline/useCambioEtapa';
 import Compositor from './Compositor';
 import { BloqueProgramados } from './ProgramarMensaje';
 import type { Conversacion, EstadoConversacion, EtapaVenta, Mensaje, RespuestaAutomatica, RespuestaRapida, Usuario } from '../../lib/tipos';
@@ -25,6 +25,9 @@ interface HiloMensajesProps {
   onResolver: () => void;
   onReclamar: () => void;
   onLiberar: () => void;
+  /** Agentes a los que se puede pasar el chat. */
+  agentes: { id: string; nombre: string }[];
+  onTransferir: (agenteId: string) => void;
   /** Presente solo en la vista celular: muestra la flecha de volver y usa el layout mobile. */
   onVolver?: () => void;
 }
@@ -55,6 +58,8 @@ export default function HiloMensajes({
   onResolver,
   onReclamar,
   onLiberar,
+  agentes,
+  onTransferir,
   onVolver,
 }: HiloMensajesProps) {
   const { contacto, setContacto } = useContacto(seleccionada.contacto_telefono.split('@')[0], usuario.empresa_id);
@@ -65,7 +70,11 @@ export default function HiloMensajes({
     const el = contenedorRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [mensajes.length, seleccionada.id]);
-  useEffect(() => setMenuAbierto(false), [seleccionada.id]);
+  const [transferirAbierto, setTransferirAbierto] = useState(false);
+  useEffect(() => {
+    setMenuAbierto(false);
+    setTransferirAbierto(false);
+  }, [seleccionada.id]);
 
   // El nombre editado a mano en la ficha del contacto (contactos.nombre) tiene
   // prioridad sobre el que trajo WhatsApp al crear la conversación.
@@ -73,11 +82,10 @@ export default function HiloMensajes({
   const conNombre = !!contacto?.nombre || tieneNombre(seleccionada);
   const iniciales = conNombre ? inicialesDe(nombreMostrado) : '';
 
-  const cambiarEtapa = async (etapaId: string) => {
+  const { cambiarEtapa: aplicarEtapa, dialogo: dialogoEtapa } = useCambioEtapa(etapasVenta);
+  const cambiarEtapa = (etapaId: string) => {
     if (!contacto) return;
-    const ahora = new Date().toISOString();
-    setContacto((prev) => (prev ? { ...prev, etapa_id: etapaId, etapa_actualizada_en: ahora } : prev));
-    await supabase.from('contactos').update({ etapa_id: etapaId, etapa_actualizada_en: ahora }).eq('id', contacto.id);
+    aplicarEtapa(contacto.id, etapaId, (cambios) => setContacto((prev) => (prev ? { ...prev, ...cambios } : prev)));
   };
 
   const etapaActual = etapasVenta.find((e) => e.id === contacto?.etapa_id);
@@ -108,6 +116,7 @@ export default function HiloMensajes({
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[16px] font-bold leading-tight break-words" style={{ color: 'var(--fg)' }} title={nombreMostrado}>{nombreMostrado}</div>
+          {conNombre && <div className="text-[12.5px] leading-tight" style={{ color: 'var(--fg-2)', fontVariantNumeric: 'tabular-nums' }}>{formatoTelefono(seleccionada.contacto_telefono)}</div>}
           <div className="flex items-center gap-x-1.5 flex-wrap text-[12.5px]" style={{ color: 'var(--fg-2)' }}>
             <span>{textoAsignado}</span>
             {etapaActual && (
@@ -127,6 +136,34 @@ export default function HiloMensajes({
             )}
           </div>
         </div>
+        {seleccionada.estado !== 'cerrado' && (
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setTransferirAbierto((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={transferirAbierto}
+              title="Pasar el chat a otro vendedor"
+              className="inline-flex items-center gap-1.5 rounded-[10px] px-3 py-2 font-semibold text-[13.5px] whitespace-nowrap"
+              style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-soft)' }}
+            >
+              <ArrowRightLeft size={15} />
+              {!esMovil && 'Transferir'}
+            </button>
+            {transferirAbierto && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setTransferirAbierto(false)} />
+                <div role="menu" className="aparecer absolute right-0 top-full mt-1 z-20 rounded-xl p-1.5 max-h-[320px] overflow-y-auto" style={{ width: 240, backgroundColor: 'var(--surface)', border: '1px solid var(--line)', boxShadow: '0 8px 24px rgba(7,26,56,.18)' }}>
+                  <div className="eyebrow px-2.5 pt-1.5 pb-1">Transferir a</div>
+                  {agentes.filter((a) => a.id !== seleccionada.agente_asignado_id).map((a) => (
+                    <button key={a.id} role="menuitem" onClick={() => { onTransferir(a.id); setTransferirAbierto(false); }} className={itemMenu} style={{ color: 'var(--fg)' }}>
+                      {a.id === usuario.id ? `${a.nombre} (yo)` : a.nombre}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
         <button
           onClick={accionPrincipal.onClick}
           className="shrink-0 inline-flex items-center gap-1.5 rounded-[10px] px-4 py-2 font-semibold text-[13.5px] whitespace-nowrap"
@@ -200,6 +237,7 @@ export default function HiloMensajes({
         <BloqueProgramados conversacionId={seleccionada.id} usuario={usuario} />
       </div>
       <Compositor mensajes={mensajes} seleccionada={seleccionada} usuario={usuario} respuestasRapidas={respuestasRapidas} respuestasAutomaticas={respuestasAutomaticas} />
+      {dialogoEtapa}
     </div>
   );
 }
